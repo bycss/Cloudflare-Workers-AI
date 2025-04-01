@@ -11,7 +11,7 @@
 
 | 模型 | 地址 | 说明 |
 |------|------|------|
-| `Qwen 1.5-14B` | [演示地址](https://calm-lake-75ac.ndjswww2023.workers.dev/) | 高质量中文、指令模型 |
+| `Qwen 1.5-14B` | [演示地址]( | 高质量中文、指令模型 |
 | `DeepSeek-R1-Distill-Qwen-32B` | _自行部署_ | 默认主模型，中文能力优秀 |
 | `DeepSeek Coder` | _自行部署_ | 适合代码生成、大批量编程场景 |
 | `DeepSeek Math` | _自行部署_ | 数学题、公式推理优化版本 |
