@@ -1,6 +1,8 @@
 
 # 🧠 DeepSeek Chat UI - Cloudflare Workers AI 聊天助手
 
+只需几分钟，打造一个无需服务器、无需域名、完全本地存储、保护隐私的 完全免费的超强 AI 聊天助手！
+
 一个轻量、强大、前端即服务的 AI 聊天助手，基于 [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/) 构建，默认集成 **DeepSeek-R1-Distill-Qwen-32B** 模型，支持多模型切换、图像生成、多会话记录、代码高亮、Markdown 渲染等。
 
 ---
