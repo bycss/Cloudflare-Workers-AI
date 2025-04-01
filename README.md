@@ -1,5 +1,5 @@
 # Cloudflare-Workers-AI
-Cloudflare-Workers-AI
+Cloudflare-Workers-AI 三个文件是三个不同的模型。
 # 🧠 DeepSeek Qwen 聊天助手（Cloudflare Workers）
 
 这是一个基于 [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/) 搭建的多窗口聊天助手，集成了 **DeepSeek-R1-Distill-Qwen-32B** 作为主要语言模型，同时具备：
@@ -16,7 +16,7 @@ Cloudflare-Workers-AI
 
 ## 🌐 在线演示
 
-> 部署到 Cloudflare Workers 后直接访问你绑定的域名即可体验。  
+> 部署到 Cloudflare Workers 后直接访问你绑定的域名即可体验。  演示是qwen1.5-14b-chat-awq模型
 > 示例地址：[https://calm-lake-75ac.ndjswww2023.workers.dev/](https://calm-lake-75ac.ndjswww2023.workers.dev/)
 
 ---
