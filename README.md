@@ -121,7 +121,7 @@ wrangler dev
 📁 Cloudflare-Workers-AI/
 ├── deepseek-qwen.js           # 使用 DeepSeek-R1-Distill-Qwen-32B 的版本
 ├── qwen-14b.js                # 使用 Qwen1.5-14B 的版本
-├── deepseek-coder.js          # 使用 DeepSeek Coder 模型
+├── mistral-7b-instruct-v0.1.js          # 使用 mistral-7b-instruct-v0.1 模型
 ├── README.md                  # 项目说明文档
 ```
 
