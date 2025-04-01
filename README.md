@@ -37,25 +37,15 @@ Cloudflare-Workers-AI 三个文件是三个不同的模型。
 ✏️ 第二步：粘贴代码
 删除默认代码
 
-将本项目中的 index.js 所有内容复制进去（这是完整的 HTML + JS + Worker）
+将本项目中的 其中一个js 所有内容复制进去（这是完整的 HTML + JS + Worker）
 
-🔧 第三步：配置 AI 模型绑定
-在编辑器右侧，点击：
 
-Settings → AI
-
-添加绑定名称为：AI（必须是 AI，与代码匹配）
-
-保存设置
-
-🚀 第四步：保存并部署
+🚀 第三步：保存并部署
 点击右上角 “Save and Deploy”
 
 你会获得一个访问链接，例如：
 
-arduino
-复制
-编辑
+
 https://deepseek-chat-xxxxx.<your-subdomain>.workers.dev
 打开链接，即可使用你的 AI 聊天助手了！
 
