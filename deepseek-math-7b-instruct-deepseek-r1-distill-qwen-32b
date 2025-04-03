@@ -1,0 +1,180 @@
+export default {
+  async fetch(request, env, ctx) {
+    const { pathname } = new URL(request.url);
+    console.log(`收到请求: 方法=${request.method}, 路径=${pathname}`);
+
+    // 聊天接口 /api/chat
+    if (request.method === 'POST' && pathname === '/api/chat') {
+      console.log('进入 /api/chat POST 处理');
+      try {
+        const formData = await request.formData();
+        const model = formData.get('model');
+        const message = formData.get('message');
+
+        console.log(`请求数据: 模型=${model}, 消息=${message}`);
+
+        if (!model || !message) {
+          console.log('缺少模型或消息，返回错误');
+          return new Response(JSON.stringify({ 
+            error: '请提供模型和消息' 
+          }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+
+        if (!env.AI) {
+          console.log('AI 服务未配置');
+          return new Response(JSON.stringify({ 
+            error: 'AI 服务未配置' 
+          }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+
+        const aiRequest = {
+          messages: [{ role: "user", content: message }]
+        };
+
+        console.log('开始调用 AI 模型...');
+        const result = await env.AI.run(model, aiRequest);
+        console.log('AI 模型返回结果:', result);
+
+        return new Response(JSON.stringify({
+          response: result.response || result.text || result.content || 'AI 返回了未知格式的数据'
+        }), {
+          headers: { "Content-Type": "application/json" }
+        });
+
+      } catch (error) {
+        console.error('处理请求时出错:', error);
+        return new Response(JSON.stringify({ 
+          error: '处理请求时出错', 
+          details: error.message || '未知错误'
+        }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // 默认返回 HTML
+    console.log('未匹配到 /api/chat，返回 HTML');
+    return new Response(`<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloudflare AI 聊天助手</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .models { margin-bottom: 20px; }
+    .model-card { display: inline-block; padding: 8px 16px; margin: 5px; border: 1px solid #ccc; border-radius: 20px; cursor: pointer; }
+    .model-card.selected { background: #e6f0ff; border-color: #4a90e2; }
+    textarea { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; }
+    button { padding: 10px 20px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #3a80d2; }
+    .message { padding: 10px; margin: 10px 0; border-radius: 4px; }
+    .user-message { background: #e6f0ff; text-align: right; }
+    .ai-message { background: #f0f0f0; }
+    .error { color: red; background: #ffeeee; padding: 10px; border-radius: 4px; }
+    .loading { color: #666; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cloudflare AI 聊天助手</h1>
+    <div class="models">
+      <div class="model-card selected" data-model="@cf/deepseek-ai/deepseek-coder-6.7b-base-awq">Coder 6.7B Base</div>
+      <div class="model-card" data-model="@cf/deepseek-ai/deepseek-coder-6.7b-instruct-awq">Coder 6.7B Instruct</div>
+      <div class="model-card" data-model="@cf/deepseek-ai/deepseek-math-7b-instruct">Math 7B Instruct</div>
+      <div class="model-card" data-model="@cf/deepseek-ai/deepseek-r1-distill-qwen-32b">R1 Qwen 32B</div>
+    </div>
+    <div id="chat-area"></div>
+    <textarea id="message-input" placeholder="输入消息..."></textarea>
+    <button id="send-button">发送</button>
+  </div>
+
+  <script>
+    let selectedModel = "@cf/deepseek-ai/deepseek-coder-6.7b-base-awq";
+    const chatArea = document.getElementById("chat-area");
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+
+    document.querySelectorAll(".model-card").forEach(card => {
+      card.addEventListener("click", () => {
+        document.querySelectorAll(".model-card").forEach(c => c.classList.remove("selected"));
+        card.classList.add("selected");
+        selectedModel = card.getAttribute("data-model");
+      });
+    });
+
+    async function sendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+
+      const userDiv = document.createElement("div");
+      userDiv.className = "message user-message";
+      userDiv.textContent = message;
+      chatArea.appendChild(userDiv);
+
+      messageInput.value = "";
+      chatArea.scrollTop = chatArea.scrollHeight;
+
+      const loadingDiv = document.createElement("div");
+      loadingDiv.className = "message loading";
+      loadingDiv.textContent = "AI 思考中...";
+      chatArea.appendChild(loadingDiv);
+
+      const formData = new FormData();
+      formData.append("model", selectedModel);
+      formData.append("message", message);
+
+      try {
+        console.log("前端发送请求到 /api/chat");
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          body: formData
+        });
+
+        const text = await response.text();
+        console.log("前端收到响应:", text);
+
+        chatArea.removeChild(loadingDiv);
+
+        if (!response.ok) {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.error + (errorData.details ? ": " + errorData.details : ""));
+        }
+
+        const result = JSON.parse(text);
+        const aiDiv = document.createElement("div");
+        aiDiv.className = "message ai-message";
+        aiDiv.textContent = result.response || "无响应内容";
+        chatArea.appendChild(aiDiv);
+      } catch (error) {
+        const errorDiv = document.createElement("div");
+        errorDiv.className = "message error";
+        errorDiv.textContent = "错误: " + error.message;
+        chatArea.appendChild(errorDiv);
+      }
+
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    sendButton.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>`, {
+      headers: { "Content-Type": "text/html;charset=UTF-8" }
+    });
+  }
+};
