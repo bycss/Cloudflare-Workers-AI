@@ -1,0 +1,174 @@
+export default {
+  async fetch(request, env, ctx) {
+    if (request.method === 'GET') {
+      return new Response(`<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>自动语音识别</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: 2rem auto; padding: 1rem; background: #f5f5f5; }
+    button { font-size: 1.1rem; padding: 0.6rem 1rem; margin-right: 1rem; background: #0078d4; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button:disabled { background: #aaa; }
+    #result > div { background: white; margin-top: 1rem; padding: 0.8rem; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>🎤 自动连续语音识别（Whisper）</h1>
+  <p>点击“开始”后，每次说话后：<br>
+  - 如果静音 5 秒，或<br>
+  - 说出“ok ok”，没有用。这个功能。将自动触发识别并进入下一轮</p>
+  <button id="start-btn">▶️ 开始识别</button>
+  <button id="stop-btn" disabled>⏹️ 停止</button>
+  <div id="result">📝 识别结果：</div>
+
+<script>
+let isRunning = false;
+let counter = 1;
+
+const startBtn = document.getElementById('start-btn');
+const stopBtn = document.getElementById('stop-btn');
+const result = document.getElementById('result');
+
+startBtn.onclick = () => {
+  if (!isRunning) {
+    isRunning = true;
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    startLoop();
+  }
+};
+
+stopBtn.onclick = () => {
+  isRunning = false;
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+};
+
+async function startLoop() {
+  while (isRunning) {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    const chunks = [];
+
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.start();
+
+    const audioCtx = new AudioContext();
+    const source = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.fftSize);
+
+    let silentFrames = 0;
+    const silenceThreshold = 8;
+    const maxSilentFrames = 150; // ≈5秒
+
+    await new Promise(resolve => {
+      function detectSilence() {
+        analyser.getByteTimeDomainData(data);
+        const avg = data.reduce((a, b) => a + Math.abs(b - 128), 0) / data.length;
+        if (avg < silenceThreshold) {
+          silentFrames++;
+          if (silentFrames > maxSilentFrames) {
+            recorder.stop();
+            audioCtx.close();
+            stream.getTracks().forEach(track => track.stop());
+            resolve();
+            return;
+          }
+        } else {
+          silentFrames = 0;
+        }
+
+        if (!isRunning) {
+          recorder.stop();
+          audioCtx.close();
+          stream.getTracks().forEach(track => track.stop());
+          resolve();
+          return;
+        }
+
+        requestAnimationFrame(detectSilence);
+      }
+      detectSilence();
+    });
+
+    await new Promise(resolve => {
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append('audio', blob, 'audio.webm');
+
+        const time = new Date().toLocaleTimeString();
+        const div = document.createElement('div');
+        div.textContent = \`#\${counter} 🕒 \${time} ⏳ 正在识别...\`;
+        result.appendChild(div);
+
+        try {
+          const res = await fetch('/', { method: 'POST', body: formData });
+          const json = await res.json();
+          const text = json.transcription || '⚠️ 无识别内容';
+          div.textContent = \`#\${counter} 🕒 \${time} 📝 \${text}\`;
+          counter++;
+
+          // 如果说了 ok ok，自动停止识别
+const stopWords = ['ok', 'okay', 'okok', 'オーケー', 'ＯＫ', '结束', 'stop'];
+if (stopWords.some(word => text.toLowerCase().includes(word))) {
+  isRunning = false;
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+}
+
+        } catch (err) {
+          div.textContent = \`#\${counter} ❌ 错误: \${err.message}\`;
+        }
+
+        resolve();
+      };
+    });
+
+    await new Promise(r => setTimeout(r, 800)); // 小间隔防抖
+  }
+}
+</script>
+</body>
+</html>`, {
+        headers: { 'Content-Type': 'text/html; charset=UTF-8' }
+      });
+    }
+
+    if (request.method === 'POST') {
+      try {
+        const formData = await request.formData();
+        const audioFile = formData.get('audio');
+        if (!audioFile) {
+          return new Response(JSON.stringify({ error: '缺少音频文件' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        const buffer = await audioFile.arrayBuffer();
+        const audioBytes = [...new Uint8Array(buffer)];
+
+        const result = await env.AI.run('@cf/openai/whisper', {
+          audio: audioBytes
+        });
+
+        return new Response(JSON.stringify({ transcription: result.text }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    return new Response('Method Not Allowed', { status: 405 });
+  }
+}
